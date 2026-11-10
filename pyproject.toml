@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "colab-autostop"
+version = "0.1.0"
+description = "Unattended Google Colab jobs that upload their results and release their own VM when done, stuck or over a time cap"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+dependencies = []
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+[project.scripts]
+colab-autostop = "colab_autostop.cli:main"
+
+[tool.setuptools]
+packages = ["colab_autostop"]
+
+[tool.setuptools.package-data]
+colab_autostop = ["box_guard.sh"]

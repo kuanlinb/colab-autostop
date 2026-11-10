@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Fake curl for the guard tests. Records every call in $FAKE_STORE/curl.calls.
+#   curl ... -T FILE URL      copies FILE to $FAKE_STORE/<last path part of URL>; 200, or 503 if $FAKE_STORE/fail_uploads exists
+#   curl ... -X POST URL      appends URL to $FAKE_STORE/released; 200, or 500 if $FAKE_STORE/fail_release exists
+echo "$*" >> "$FAKE_STORE/curl.calls"
+file= url= method=
+while [ $# -gt 0 ]; do
+  case $1 in
+    -T) file=$2; shift ;;
+    -X) method=$2; shift ;;
+    -o|-w|--max-time) shift ;;
+    -*) ;;
+    *) url=$1 ;;
+  esac
+  shift
+done
+if [ -n "$file" ]; then
+  if [ -e "$FAKE_STORE/fail_uploads" ]; then printf 503; exit 0; fi
+  name=${url%%\?*}; cp "$file" "$FAKE_STORE/${name##*/}"; printf 200
+elif [ "$method" = POST ]; then
+  echo "$url" >> "$FAKE_STORE/released"
+  if [ -e "$FAKE_STORE/fail_release" ]; then printf 500; else printf 200; fi
+fi

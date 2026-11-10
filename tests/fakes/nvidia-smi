@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake nvidia-smi: prints one utilization line per GPU from $FAKE_GPU (default "0"); hangs if $FAKE_GPU_HANG=1.
+[ "${FAKE_GPU_HANG:-}" = 1 ] && sleep 600
+printf '%b\n' "${FAKE_GPU:-0}"
