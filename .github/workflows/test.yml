@@ -1,0 +1,35 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux runs everything, including the guard tests (they need bash and GNU tools).
+          # ubuntu-24.04 is pinned rather than ubuntu-latest because it still has Python 3.8, the oldest supported.
+          - { os: ubuntu-24.04, python: "3.8" }
+          - { os: ubuntu-24.04, python: "3.14" }
+          # Native Windows runs the signing and launcher tests; the guard tests skip themselves there.
+          - { os: windows-latest, python: "3.14" }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests (no Colab, no network)
+        run: python -m unittest discover -s tests -v
+      - name: Package includes the guard
+        run: |
+          python -m pip install .
+          colab-autostop --version
+          python -c "import os, colab_autostop as c; assert os.path.isfile(os.path.join(os.path.dirname(c.__file__), 'box_guard.sh'))"

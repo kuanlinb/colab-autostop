@@ -122,12 +122,16 @@ already ended).
 
 ### Storage providers
 
-| `AUTOSTOP_PROVIDER` | Also needs | URL form |
-|---|---|---|
-| `r2` (default) | `AUTOSTOP_ACCOUNT_ID` | `https://<account>.r2.cloudflarestorage.com/<bucket>/<key>` |
-| `s3` | `AUTOSTOP_REGION` (default `us-east-1`); `AUTOSTOP_PATH_STYLE=1` for path-style | `https://<bucket>.s3.<region>.amazonaws.com/<key>` |
-| `gcs` | an [HMAC key](https://cloud.google.com/storage/docs/authentication/hmackeys) | `https://storage.googleapis.com/<bucket>/<key>`, `GOOG4-HMAC-SHA256` |
-| `custom` | `AUTOSTOP_ENDPOINT`, e.g. `https://minio.example.com:9000` | path-style, SigV4 |
+| `AUTOSTOP_PROVIDER` | Also needs | URL form | Status |
+|---|---|---|---|
+| `r2` (default) | `AUTOSTOP_ACCOUNT_ID` | `https://<account>.r2.cloudflarestorage.com/<bucket>/<key>` | tested on live Colab runs |
+| `s3` | `AUTOSTOP_REGION` (default `us-east-1`); `AUTOSTOP_PATH_STYLE=1` for path-style | `https://<bucket>.s3.<region>.amazonaws.com/<key>` | experimental |
+| `gcs` | an [HMAC key](https://cloud.google.com/storage/docs/authentication/hmackeys) | `https://storage.googleapis.com/<bucket>/<key>`, `GOOG4-HMAC-SHA256` | experimental |
+| `custom` | `AUTOSTOP_ENDPOINT`, e.g. `https://minio.example.com:9000` | path-style, SigV4 | experimental |
+
+*Experimental* means the signing passes the published AWS test vector and the URL format follows the provider's
+documentation, but no upload has been tried against a real bucket of that kind yet. If you use one, please report
+whether it worked.
 
 `colab-autostop presign put|get KEY` prints a single presigned URL with the same settings.
 
@@ -232,8 +236,8 @@ Nothing needs Colab or network access:
   `/proc/stat` (DONE by exit code or regex, STUCK, CAP, its own writes and ignored paths not counting as progress,
   GPU-busy, CPU of the job's session measured per poll while other sessions' CPU is ignored (also against the real
   `/proc` with a spinning and a sleeping process), a hung `nvidia-smi`, upload failure, release failure, URLs never packed,
-  not on Colab), plus the whole VM-side start-up run in a temp folder. Needs bash, so it runs on Linux,
-  macOS or WSL and is skipped on native Windows.
+  not on Colab), plus the whole VM-side start-up run in a temp folder. Needs bash, so it runs on Linux
+  or WSL and is skipped elsewhere (native Windows, macOS).
 - `tests/test_launch.py`: the launcher against a fake `colab` CLI wrapped like a shell wrapper would be: hung `exec`
   and hung `new` are killed with their whole process tree and the VM is stopped; failed uploads, an unarmed guard
   and Ctrl-C stop the VM; an existing session name is refused; no secret is ever uploaded.

@@ -1,4 +1,4 @@
-"""Launcher tests against a fake colab CLI. No Colab, no network, runs on Windows, macOS and Linux."""
+"""Launcher tests against a fake colab CLI. No Colab, no network, tested on Windows and Linux."""
 import contextlib
 import io
 import json
@@ -16,6 +16,12 @@ from colab_autostop import cli, proc
 HERE = os.path.dirname(os.path.abspath(__file__))
 WRAPPER = os.path.join(HERE, "fakes", "wrapper.py")
 SECRET = "test-secret-key-do-not-leak"
+# Time limit for each fake CLI call. A fake call normally takes well under a second, but two Python start-ups
+# per call can take several seconds on a busy machine or a slow CI runner, so keep a wide margin.
+LIMIT = 10
+# A hung call must come back within LIMIT + KILL_SLACK. Killing the whole tree takes a few seconds; killing only
+# the wrapper leaves the grandchild holding the pipe until the 15 s drain timeout, so it takes LIMIT + 15 or more.
+KILL_SLACK = 8
 
 
 class Launch(unittest.TestCase):
@@ -45,8 +51,8 @@ class Launch(unittest.TestCase):
     def launch(self, *extra, **env):
         os.environ.update(env)
         argv = ["launch", "--session", "t1", "--job", "python train.py --epochs 1", "--colab", self.colab,
-                "--results", "/content/out", "--idle-min", "15", "--cap-min", "90", "--cli-timeout", "4",
-                "--new-timeout", "4", "--upload-timeout", "4"] + list(extra)
+                "--results", "/content/out", "--idle-min", "15", "--cap-min", "90", "--cli-timeout", str(LIMIT),
+                "--new-timeout", str(LIMIT), "--upload-timeout", str(LIMIT)] + list(extra)
         out = io.StringIO()
         t0 = time.time()
         with contextlib.redirect_stdout(out):
@@ -57,6 +63,25 @@ class Launch(unittest.TestCase):
         self.elapsed = time.time() - t0
         self.out = out.getvalue()
         return code
+
+    def launch_timing_kills(self, **env):
+        """launch(), also returning how long each CLI call that hit its time limit took to come back.
+        Only those calls are timed: the total also holds the other fake CLI calls, which can each take a
+        second or two on a busy machine. If only the wrapper died, the grandchild would hold the output
+        pipe and the call would take the limit plus the 15 s drain timeout or more."""
+        timed_out = []
+        real_run = proc.run
+
+        def timed_run(cmd, timeout):
+            t0 = time.time()
+            r = real_run(cmd, timeout)
+            if r.timed_out:
+                timed_out.append(time.time() - t0)
+            return r
+
+        with mock.patch.object(proc, "run", timed_run):
+            code = self.launch(**env)
+        return code, timed_out
 
     def calls(self):
         if not os.path.exists(self.calls_log):
@@ -109,10 +134,11 @@ class Launch(unittest.TestCase):
 
     def test_hung_exec_is_killed_and_vm_stopped(self):
         # the wrapper starts the fake CLI as a grandchild, as a shell/PowerShell wrapper would
-        code = self.launch(FAKE_COLAB_HANG="exec")
+        code, timed_out = self.launch_timing_kills(FAKE_COLAB_HANG="exec")
         self.assertNotEqual(code, 0)
         self.assertEqual(self.verbs()[-2:], ["stop", "sessions"])
-        self.assertLess(self.elapsed, 4 + 12, "the whole process tree should die at the time limit")
+        self.assertEqual(len(timed_out), 1, self.out)
+        self.assertLess(timed_out[0], LIMIT + KILL_SLACK, "the whole process tree should die at the time limit")
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "runs", "t1.json")))
 
     def test_guard_not_armed_stops_vm(self):
@@ -161,11 +187,12 @@ class Launch(unittest.TestCase):
 
     def test_hung_new_is_killed_and_rechecked(self):
         with mock.patch.object(cli.time, "sleep") as sleep:
-            code = self.launch(FAKE_COLAB_HANG="new")
+            code, timed_out = self.launch_timing_kills(FAKE_COLAB_HANG="new")
         sleep.assert_called_once_with(30)
         self.assertIn("did not appear", str(code))
         self.assertEqual(self.verbs(), ["sessions", "new", "sessions", "sessions"])
-        self.assertLess(self.elapsed, 4 + 12)
+        self.assertEqual(len(timed_out), 1, self.out)
+        self.assertLess(timed_out[0], LIMIT + KILL_SLACK, "the whole process tree should die at the time limit")
 
     def test_missing_storage_fails_before_renting(self):
         os.environ["AUTOSTOP_SECRET_ACCESS_KEY"] = ""

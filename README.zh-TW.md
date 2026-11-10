@@ -95,12 +95,14 @@ pip install .
 
 ### 支援的儲存空間
 
-| `AUTOSTOP_PROVIDER` | 另外需要 | 網址格式 |
-|---|---|---|
-| `r2`（預設） | `AUTOSTOP_ACCOUNT_ID` | `https://<帳號>.r2.cloudflarestorage.com/<bucket>/<key>` |
-| `s3` | `AUTOSTOP_REGION`（預設 `us-east-1`）；要 path-style 就設 `AUTOSTOP_PATH_STYLE=1` | `https://<bucket>.s3.<region>.amazonaws.com/<key>` |
-| `gcs` | [HMAC 金鑰](https://cloud.google.com/storage/docs/authentication/hmackeys) | `https://storage.googleapis.com/<bucket>/<key>`，用 `GOOG4-HMAC-SHA256` |
-| `custom` | `AUTOSTOP_ENDPOINT`，例如 `https://minio.example.com:9000` | path-style，SigV4 |
+| `AUTOSTOP_PROVIDER` | 另外需要 | 網址格式 | 狀態 |
+|---|---|---|---|
+| `r2`（預設） | `AUTOSTOP_ACCOUNT_ID` | `https://<帳號>.r2.cloudflarestorage.com/<bucket>/<key>` | Colab 實機測過 |
+| `s3` | `AUTOSTOP_REGION`（預設 `us-east-1`）；要 path-style 就設 `AUTOSTOP_PATH_STYLE=1` | `https://<bucket>.s3.<region>.amazonaws.com/<key>` | 實驗性 |
+| `gcs` | [HMAC 金鑰](https://cloud.google.com/storage/docs/authentication/hmackeys) | `https://storage.googleapis.com/<bucket>/<key>`，用 `GOOG4-HMAC-SHA256` | 實驗性 |
+| `custom` | `AUTOSTOP_ENDPOINT`，例如 `https://minio.example.com:9000` | path-style，SigV4 | 實驗性 |
+
+「實驗性」的意思是：簽名通過了 AWS 官方的測試範例，網址格式也照各家文件，但還沒有在那種真的 bucket 上傳過。如果你用了，歡迎回報結果。
 
 `colab-autostop presign put|get KEY` 會用同一組設定印出一個預先簽好的網址。
 
@@ -178,7 +180,7 @@ python -m unittest -v
 全部都不需要 Colab，也不需要網路：
 
 - `tests/test_sign.py`：簽名，包括 AWS SigV4 查詢字串文件裡的範例，以及 R2、S3、GCS、自訂端點的網址格式。
-- `tests/test_guard.py`：用假的 `curl`、假的 `nvidia-smi` 和假的 `/proc/stat` 測守衛的狀態機（用結束碼或 regex 判斷 DONE、STUCK、CAP、守衛自己的寫入和忽略路徑不算進度、GPU 忙碌、工作 session 的 CPU 每次檢查分開算而且不算其他 session（另外也用真的 `/proc` 測一個吃滿 CPU 和一個在睡的程式）、`nvidia-smi` 卡住、上傳失敗、釋放失敗、上傳網址不會被打包、不在 Colab 上），另外把整個 VM 端的啟動流程放在暫存資料夾裡跑一遍。這部分需要 bash，所以在 Linux、macOS 或 WSL 上跑，原生 Windows 會略過。
+- `tests/test_guard.py`：用假的 `curl`、假的 `nvidia-smi` 和假的 `/proc/stat` 測守衛的狀態機（用結束碼或 regex 判斷 DONE、STUCK、CAP、守衛自己的寫入和忽略路徑不算進度、GPU 忙碌、工作 session 的 CPU 每次檢查分開算而且不算其他 session（另外也用真的 `/proc` 測一個吃滿 CPU 和一個在睡的程式）、`nvidia-smi` 卡住、上傳失敗、釋放失敗、上傳網址不會被打包、不在 Colab 上），另外把整個 VM 端的啟動流程放在暫存資料夾裡跑一遍。這部分需要 Linux 的 bash 和 GNU 工具，所以只在 Linux 或 WSL 上跑，原生 Windows 和 macOS 會略過。
 - `tests/test_launch.py`：用一個假的 `colab` CLI 測 launcher，而且像 shell 包裝腳本那樣多包一層：卡住的 `exec` 和 `new` 會連同整個子行程樹被砍掉、VM 會被關掉；上傳失敗、守衛沒就位、按 Ctrl-C 都會關掉 VM；同名 session 已存在會拒絕啟動；確認金鑰本身從來沒有被上傳。
 
 目前做過的實機驗證（2026-11-10，Colab CPU 機器和一台 G4 GPU 機器、Cloudflare R2、`colab` CLI 0.7.5；每台測試機都自己釋放了，之後 `colab sessions` 是空的；啟動一次大約 30 秒）：

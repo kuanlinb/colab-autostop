@@ -1,12 +1,13 @@
 """State machine tests for box_guard.sh with a fake curl and a fake nvidia-smi. No Colab needed.
 
-The guard only runs on Colab's Linux VMs, so these tests need a POSIX system with bash, GNU-style find and tar:
-Linux, WSL, or macOS. On native Windows they are skipped; run them under WSL.
+The guard only runs on Colab's Linux VMs, so these tests need Linux (or WSL) with bash and GNU coreutils, find
+and tar. Elsewhere (native Windows, macOS) they are skipped; on Windows run them under WSL.
 """
 import io
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import threading
@@ -16,14 +17,14 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 GUARD = os.path.join(HERE, os.pardir, "colab_autostop", "box_guard.sh")
 FAKES = os.path.join(HERE, "fakes")
-BASH = None if os.name == "nt" else shutil.which("bash")
+BASH = shutil.which("bash") if sys.platform.startswith("linux") else None
 
 
 def sh_path(p):
     return os.path.abspath(p)
 
 
-@unittest.skipIf(BASH is None, "needs bash on Linux/macOS/WSL (the guard runs on Linux)")
+@unittest.skipIf(BASH is None, "needs Linux or WSL (the guard runs on Colab's Linux VMs)")
 class GuardStates(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="autostop-test-")
@@ -325,7 +326,7 @@ if __name__ == "__main__":
     unittest.main()
 
 
-@unittest.skipIf(BASH is None, "needs bash on Linux/macOS/WSL (the guard runs on Linux)")
+@unittest.skipIf(BASH is None, "needs Linux or WSL (the guard runs on Colab's Linux VMs)")
 class BoxSideEndToEnd(unittest.TestCase):
     """Runs the launcher's real box-side files (starter, run_job.sh, env file, guard) in a temp dir as /content."""
 
