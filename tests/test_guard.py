@@ -163,6 +163,9 @@ class GuardStates(unittest.TestCase):
         self.assertLess(self.elapsed, 15)
         self.assertEqual(len(self.released()), 1)
         self.assertTrue(any(n.endswith("out/metrics.json") for n in self.archive_names()))
+        log = self.guard_log()  # CPU signal off (the default here): the log says "off", not "0%" or "off%"
+        self.assertIn("cpu busy off,", log)
+        self.assertIn("cpu off, no progress", log)
 
     def test_own_dir_and_ignored_paths_do_not_count_as_progress(self):
         # the guard writes its own log every poll (inside the watched tree), and Colab-like housekeeping

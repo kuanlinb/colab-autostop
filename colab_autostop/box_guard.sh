@@ -186,7 +186,8 @@ moved_since() {  # moved_since <stamp>: prints one changed file, if any
 [ -n "$RUNTIME_ADDR" ] || { say "TBE_RUNTIME_ADDR is not set (not a Colab VM?); guard not armed"; exit 1; }
 command -v curl > /dev/null || { say "curl not found; guard not armed"; exit 1; }
 echo $$ > "$DIR/guard.pid"
-say "armed: idle ${IDLE_SEC}s, cap ${CAP_SEC}s, poll ${POLL}s, gpu busy ${GPU_BUSY}%, cpu busy ${CPU_BUSY}%," \
+cpu_busy_txt=${CPU_BUSY}%; [ "$CPU_BUSY" = off ] && cpu_busy_txt=off
+say "armed: idle ${IDLE_SEC}s, cap ${CAP_SEC}s, poll ${POLL}s, gpu busy ${GPU_BUSY}%, cpu busy ${cpu_busy_txt}," \
     "watch [$WATCH], done files [$DONE_FILES]"
 
 start=$SECONDS; last_move=$SECONDS
@@ -201,8 +202,9 @@ while true; do
   cpu_util
   polls=$((${polls:-0} + 1))
   if [ $((polls % 10)) = 1 ]; then  # a reading now and then, to tune the thresholds afterwards
+    cpu_txt="${cpu}% of one core"; [ "$CPU_BUSY" = off ] && cpu_txt=off
     say "poll $polls: file written: $([ -n "$moved" ] && echo yes || echo no), gpu ${gpu}%," \
-        "cpu ${cpu}% of one core, no progress for $((SECONDS - last_move))s"
+        "cpu ${cpu_txt}, no progress for $((SECONDS - last_move))s"
   fi
   if [ -n "$moved" ] || [ "${gpu:-0}" -ge "$GPU_BUSY" ]; then
     last_move=$SECONDS

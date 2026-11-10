@@ -181,7 +181,7 @@ python -m unittest -v
 - `tests/test_guard.py`：用假的 `curl`、假的 `nvidia-smi` 和假的 `/proc/stat` 測守衛的狀態機（用結束碼或 regex 判斷 DONE、STUCK、CAP、守衛自己的寫入和忽略路徑不算進度、GPU 忙碌、工作 session 的 CPU 每次檢查分開算而且不算其他 session（另外也用真的 `/proc` 測一個吃滿 CPU 和一個在睡的程式）、`nvidia-smi` 卡住、上傳失敗、釋放失敗、上傳網址不會被打包、不在 Colab 上），另外把整個 VM 端的啟動流程放在暫存資料夾裡跑一遍。這部分需要 bash，所以在 Linux、macOS 或 WSL 上跑，原生 Windows 會略過。
 - `tests/test_launch.py`：用一個假的 `colab` CLI 測 launcher，而且像 shell 包裝腳本那樣多包一層：卡住的 `exec` 和 `new` 會連同整個子行程樹被砍掉、VM 會被關掉；上傳失敗、守衛沒就位、按 Ctrl-C 都會關掉 VM；同名 session 已存在會拒絕啟動；確認金鑰本身從來沒有被上傳。
 
-目前做過的實機驗證（2026-11-10，Colab CPU 機器、Cloudflare R2、`colab` CLI 0.7.5；每台測試機都自己釋放了，之後 `colab sessions` 是空的；啟動一次大約 30 秒）：
+目前做過的實機驗證（2026-11-10，Colab CPU 機器和一台 G4 GPU 機器、Cloudflare R2、`colab` CLI 0.7.5；每台測試機都自己釋放了，之後 `colab sessions` 是空的；啟動一次大約 30 秒）：
 
 | 測試 | 工作內容 | 結果 |
 |---|---|---|
@@ -189,10 +189,11 @@ python -m unittest -v
 | STUCK | 寫一個檔後就一直睡 | 最後一次寫檔後剛好 3 分鐘判定 `STUCK`（`--idle-min 3`），工作的 CPU 讀數是 0% |
 | CAP | 每 20 秒寫一行 | 在 4 分鐘上限判定 `CAP` |
 | 只吃 CPU | `while True: pass`，完全不寫檔 | 工作 CPU 讀數是一顆核心的 98% 到 99%，沒有被判成 `STUCK`，在 6 分鐘上限判定 `CAP` |
+| G4 GPU | 先做 5 分鐘矩陣乘法、完全不寫檔，之後佔著 GPU 記憶體睡覺（`--cpu-busy-pct off`，只剩 GPU 讀數能讓它不被判卡住） | GPU 讀數先是 100%、後來 0%；撐過不寫檔的 5 分鐘，在 GPU 閒下來後剛好 3 分鐘判定 `STUCK`（啟動後 8 分鐘）；花了約 1.2 個運算單元 |
 
 STUCK 這項在第一版是失敗的，因為當時看的是整台 VM 的 CPU：閒著的機器光 Colab 自己的服務就一直把閒置計時歸零，死掉的工作一路跑到上限。所以現在 CPU 只算工作自己的行程。
 
-還沒有實機測過的：GPU 機器、AWS S3、GCS。S3 和 GCS 的簽名只對過官方的測試範例和格式規則。
+還沒有實機測過的：AWS S3、GCS，以及 G4 以外的 GPU 型號。S3 和 GCS 的簽名只對過官方的測試範例和格式規則。
 
 ## 授權
 

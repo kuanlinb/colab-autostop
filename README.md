@@ -238,7 +238,7 @@ Nothing needs Colab or network access:
   and hung `new` are killed with their whole process tree and the VM is stopped; failed uploads, an unarmed guard
   and Ctrl-C stop the VM; an existing session name is refused; no secret is ever uploaded.
 
-Live checks so far (2026-11-10, Colab CPU runtimes, Cloudflare R2, `colab` CLI 0.7.5; every test VM released
+Live checks so far (2026-11-10, Colab CPU runtimes and one G4 GPU runtime, Cloudflare R2, `colab` CLI 0.7.5; every test VM released
 itself and `colab sessions` was empty afterwards; launching took about 30 s):
 
 | Run | Job | Result |
@@ -247,11 +247,12 @@ itself and `colab sessions` was empty afterwards; launching took about 30 s):
 | STUCK | writes one file, then sleeps | `STUCK` exactly 3 min after the last write (`--idle-min 3`); the job's CPU read 0 % |
 | CAP | writes a line every 20 s | `CAP` at the 4 min cap |
 | CPU only | `while True: pass`, writes nothing | job CPU read 98 to 99 % of a core, never `STUCK`, `CAP` at the 6 min cap |
+| G4 GPU | 5 min of matrix multiplies writing nothing, then holds GPU memory and sleeps (`--cpu-busy-pct off`, so only the GPU reading can keep it alive) | GPU read 100 % then 0 %; survived the 5 silent minutes and was `STUCK` exactly 3 min after the GPU went idle (8 min after start); about 1.2 compute units |
 
 The STUCK run failed with the first version, which used whole-VM CPU: the idle VM's own services kept resetting the
 idle timer and the dead job ran to the cap. That is why CPU is now counted for the job's processes only.
 
-Not tested live yet: GPU runtimes, AWS S3 and GCS. S3 and GCS signing is checked only against the published test
+Not tested live yet: AWS S3, GCS, and GPU types other than G4. S3 and GCS signing is checked only against the published test
 vector and format rules.
 
 ## License
