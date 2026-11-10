@@ -145,7 +145,7 @@ subprocess.Popen(["bash", "/content/box_guard.sh"], env=env, start_new_session=T
 
 ## 限制
 
-- **釋放 VM 用的是沒有公開文件的端點。** 守衛送 POST 到 `http://$TBE_RUNTIME_ADDR/unassign`，和 `google.colab.runtime.unassign()` 送的是同一個請求。這是 Colab 內部介面，沒有公開文件，隨時可能改掉或拿掉。如果它失敗，守衛會記 log、重試三次後結束；結果還是會上傳，但 VM 會繼續扣點，直到 Colab 自己收回或你手動關掉。跑貴的機器時，請自己再準備一道保險，例如排程在上限加緩衝時間後執行 `colab stop`。
+- **釋放 VM 用的是沒有公開文件的端點。** 守衛送 POST 到 `http://$TBE_RUNTIME_ADDR/unassign`，和 `google.colab.runtime.unassign()` 送的是同一個請求。這是 Colab 內部介面，沒有公開文件，隨時可能改掉或拿掉。如果它失敗，守衛會記 log、改試一次 `runtime.unassign()`，之後每分鐘重送一次，連續 30 分鐘都失敗才結束；結果還是會上傳，但 VM 會繼續扣點，直到 Colab 自己收回或你手動關掉。跑貴的機器時，請自己再準備一道保險，例如排程在上限加緩衝時間後執行 `colab stop`。
 - **安靜太久會被當成卡住。** 「有進度」的定義是監看路徑底下有檔案被寫入，或 GPU、CPU 在忙。如果工作只是在等（等遠端 API、慢慢下載到沒被監看的路徑），又超過 `--idle-min` 都沒寫檔，就會被判成 `STUCK`。可以調高 `--idle-min`、多監看幾個路徑，或讓工作定期更新一個心跳檔。
 - **CPU 只算工作自己的行程**，也就是 launcher 啟動工作時開的那個 session 裡的所有行程。第一版看的是整台 VM 的 CPU，結果死掉的工作永遠不會被判成 `STUCK`：一台閒著的 Colab CPU 機器，光 Colab 自己的服務就用掉一顆核心的 17% 到 29%，每兩三分鐘還會衝過 30%。工作自己另開新 session 的背景程式（`setsid`、`start_new_session=True`）不會算進去。
 - **在忙不代表正常。** 死結但 GPU 或 CPU 一直在轉的程式，或不斷印同一個錯誤的程式，都不會被判成 `STUCK`，只有 `CAP` 能結束它。所以一定要設一個你付得起的上限。

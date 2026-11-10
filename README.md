@@ -182,7 +182,7 @@ without it only file writes and the GPU count. All settings are listed at the to
 
 - **Release uses an undocumented endpoint.** The guard POSTs to `http://$TBE_RUNTIME_ADDR/unassign`, the same
   request `google.colab.runtime.unassign()` sends. It is an internal Colab interface with no public documentation
-  and may change or disappear. If it fails, the guard logs it, retries three times and exits; the results are still
+  and may change or disappear. If it fails, the guard logs it, tries `runtime.unassign()` once, then retries every minute for 30 minutes before it exits; the results are still
   uploaded, but the VM keeps billing until Colab reclaims it or you stop it. Keep a backstop of your own (for
   example a scheduled `colab stop` at cap plus a grace period) for anything expensive.
 - **Silence looks like a hang.** Progress means "some file under the watched paths was written, or the GPU or the
