@@ -188,7 +188,9 @@ class Launch(unittest.TestCase):
     def test_hung_new_is_killed_and_rechecked(self):
         with mock.patch.object(cli.time, "sleep") as sleep:
             code, timed_out = self.launch_timing_kills(FAKE_COLAB_HANG="new")
-        sleep.assert_called_once_with(30)
+        # The patch replaces time.sleep everywhere, and on Linux subprocess's own wait loop also calls it,
+        # so look only for the launcher's 30 s pause before it checks again.
+        self.assertEqual(sleep.call_args_list.count(mock.call(30)), 1, sleep.call_args_list)
         self.assertIn("did not appear", str(code))
         self.assertEqual(self.verbs(), ["sessions", "new", "sessions", "sessions"])
         self.assertEqual(len(timed_out), 1, self.out)

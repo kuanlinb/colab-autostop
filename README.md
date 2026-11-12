@@ -70,7 +70,13 @@ Python 3.8+, no dependencies. You also need the official [Colab CLI](https://pyp
 logged in.
 
 ```bash
-git clone <this repo> && cd colab-autostop
+pip install git+https://github.com/kuanlinb/colab-autostop.git
+```
+
+Or from a clone, to run the tests too:
+
+```bash
+git clone https://github.com/kuanlinb/colab-autostop.git && cd colab-autostop
 pip install .
 ```
 

@@ -52,7 +52,13 @@ Colab 的機器只要還掛著就會一直扣運算單元。官方 `colab` CLI �
 需要 Python 3.8 以上，沒有其他相依套件。另外要裝好官方的 [Colab CLI](https://pypi.org/project/google-colab-cli/) 並登入。
 
 ```bash
-git clone <這個 repo> && cd colab-autostop
+pip install git+https://github.com/kuanlinb/colab-autostop.git
+```
+
+如果也想跑測試，就先 clone 下來再裝：
+
+```bash
+git clone https://github.com/kuanlinb/colab-autostop.git && cd colab-autostop
 pip install .
 ```
 

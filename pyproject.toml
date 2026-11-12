@@ -16,6 +16,10 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 
+[project.urls]
+Homepage = "https://github.com/kuanlinb/colab-autostop"
+Issues = "https://github.com/kuanlinb/colab-autostop/issues"
+
 [project.scripts]
 colab-autostop = "colab_autostop.cli:main"
 
